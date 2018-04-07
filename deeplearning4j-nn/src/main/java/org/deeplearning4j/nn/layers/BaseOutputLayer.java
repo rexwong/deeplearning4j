@@ -375,6 +375,10 @@ public abstract class BaseOutputLayer<LayerConfT extends org.deeplearning4j.nn.c
         super.clear();
         labels = null;
         solver = null;
+        inputMaskArrayState = null;
+        inputMaskArray = null;
+        fullNetworkL1 = 0.0;
+        fullNetworkL2 = 0.0;
     }
 
     /**
@@ -405,10 +409,10 @@ public abstract class BaseOutputLayer<LayerConfT extends org.deeplearning4j.nn.c
     @Override
     public void migrateInput(){
         super.migrateInput();
-        if(labels != null){
+        if(labels != null && labels.isAttached()){
             labels = labels.migrate(true);
         }
-        if(inputMaskArray != null){
+        if(inputMaskArray != null && inputMaskArray.isAttached()){
             inputMaskArray = inputMaskArray.migrate(true);
         }
     }

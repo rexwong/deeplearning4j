@@ -18,7 +18,10 @@ import org.datavec.api.writable.DoubleWritable;
 import org.datavec.api.writable.IntWritable;
 import org.datavec.api.writable.Writable;
 import org.datavec.image.recordreader.ImageRecordReader;
+import org.deeplearning4j.BaseDL4JTest;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.MultiDataSet;
@@ -36,7 +39,10 @@ import static org.junit.Assert.*;
 import static org.nd4j.linalg.indexing.NDArrayIndex.all;
 import static org.nd4j.linalg.indexing.NDArrayIndex.point;
 
-public class RecordReaderMultiDataSetIteratorTest {
+public class RecordReaderMultiDataSetIteratorTest extends BaseDL4JTest {
+
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Test
     public void testsBasic() throws Exception {
@@ -73,17 +79,16 @@ public class RecordReaderMultiDataSetIteratorTest {
         assertFalse(rrmdsi.hasNext());
 
         //need to manually extract
+        File rootDir = temporaryFolder.newFolder();
         for (int i = 0; i < 3; i++) {
-            new ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive();
-            new ClassPathResource(String.format("csvsequencelabels_%d.txt", i)).getTempFileFromArchive();
-            new ClassPathResource(String.format("csvsequencelabelsShort_%d.txt", i)).getTempFileFromArchive();
+            new ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive(rootDir);
+            new ClassPathResource(String.format("csvsequencelabels_%d.txt", i)).getTempFileFromArchive(rootDir);
+            new ClassPathResource(String.format("csvsequencelabelsShort_%d.txt", i)).getTempFileFromArchive(rootDir);
         }
 
         //Load time series from CSV sequence files; compare to SequenceRecordReaderDataSetIterator
-        ClassPathResource resource = new ClassPathResource("csvsequence_0.txt");
-        String featuresPath = resource.getTempFileFromArchive().getAbsolutePath().replaceAll("0", "%d");
-        resource = new ClassPathResource("csvsequencelabels_0.txt");
-        String labelsPath = resource.getTempFileFromArchive().getAbsolutePath().replaceAll("0", "%d");
+        String featuresPath = FilenameUtils.concat(rootDir.getAbsolutePath(), "csvsequence_%d.txt");
+        String labelsPath = FilenameUtils.concat(rootDir.getAbsolutePath(), "csvsequencelabels_%d.txt");
 
         SequenceRecordReader featureReader = new CSVSequenceRecordReader(1, ",");
         SequenceRecordReader labelReader = new CSVSequenceRecordReader(1, ",");
@@ -224,16 +229,15 @@ public class RecordReaderMultiDataSetIteratorTest {
         //Idea: take CSV sequences, and split "csvsequence_i.txt" into two separate inputs; keep "csvSequencelables_i.txt"
         // as standard one-hot output
         //need to manually extract
+        File rootDir = temporaryFolder.newFolder();
         for (int i = 0; i < 3; i++) {
-            new ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive();
-            new ClassPathResource(String.format("csvsequencelabels_%d.txt", i)).getTempFileFromArchive();
-            new ClassPathResource(String.format("csvsequencelabelsShort_%d.txt", i)).getTempFileFromArchive();
+            new ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive(rootDir);
+            new ClassPathResource(String.format("csvsequencelabels_%d.txt", i)).getTempFileFromArchive(rootDir);
+            new ClassPathResource(String.format("csvsequencelabelsShort_%d.txt", i)).getTempFileFromArchive(rootDir);
         }
 
-        ClassPathResource resource = new ClassPathResource("csvsequence_0.txt");
-        String featuresPath = resource.getTempFileFromArchive().getAbsolutePath().replaceAll("0", "%d");
-        resource = new ClassPathResource("csvsequencelabels_0.txt");
-        String labelsPath = resource.getTempFileFromArchive().getAbsolutePath().replaceAll("0", "%d");
+        String featuresPath = FilenameUtils.concat(rootDir.getAbsolutePath(), "csvsequence_%d.txt");
+        String labelsPath = FilenameUtils.concat(rootDir.getAbsolutePath(), "csvsequencelabels_%d.txt");
 
         SequenceRecordReader featureReader = new CSVSequenceRecordReader(1, ",");
         SequenceRecordReader labelReader = new CSVSequenceRecordReader(1, ",");
@@ -287,16 +291,15 @@ public class RecordReaderMultiDataSetIteratorTest {
         //Idea: take CSV sequences, and split "csvsequence_i.txt" into two separate inputs; keep "csvSequencelables_i.txt"
         // as standard one-hot output
         //need to manually extract
+        File rootDir = temporaryFolder.newFolder();
         for (int i = 0; i < 3; i++) {
-            new ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive();
-            new ClassPathResource(String.format("csvsequencelabels_%d.txt", i)).getTempFileFromArchive();
-            new ClassPathResource(String.format("csvsequencelabelsShort_%d.txt", i)).getTempFileFromArchive();
+            new ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive(rootDir);
+            new ClassPathResource(String.format("csvsequencelabels_%d.txt", i)).getTempFileFromArchive(rootDir);
+            new ClassPathResource(String.format("csvsequencelabelsShort_%d.txt", i)).getTempFileFromArchive(rootDir);
         }
 
-        ClassPathResource resource = new ClassPathResource("csvsequence_0.txt");
-        String featuresPath = resource.getTempFileFromArchive().getAbsolutePath().replaceAll("0", "%d");
-        resource = new ClassPathResource("csvsequencelabels_0.txt");
-        String labelsPath = resource.getTempFileFromArchive().getAbsolutePath().replaceAll("0", "%d");
+        String featuresPath = FilenameUtils.concat(rootDir.getAbsolutePath(), "csvsequence_%d.txt");
+        String labelsPath = FilenameUtils.concat(rootDir.getAbsolutePath(), "csvsequencelabels_%d.txt");
 
         SequenceRecordReader featureReader = new CSVSequenceRecordReader(1, ",");
         SequenceRecordReader labelReader = new CSVSequenceRecordReader(1, ",");
@@ -361,16 +364,17 @@ public class RecordReaderMultiDataSetIteratorTest {
     @Test
     public void testVariableLengthTS() throws Exception {
         //need to manually extract
+        File rootDir = temporaryFolder.newFolder();
         for (int i = 0; i < 3; i++) {
-            new ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive();
-            new ClassPathResource(String.format("csvsequencelabels_%d.txt", i)).getTempFileFromArchive();
-            new ClassPathResource(String.format("csvsequencelabelsShort_%d.txt", i)).getTempFileFromArchive();
+            new ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive(rootDir);
+            new ClassPathResource(String.format("csvsequencelabels_%d.txt", i)).getTempFileFromArchive(rootDir);
+            new ClassPathResource(String.format("csvsequencelabelsShort_%d.txt", i)).getTempFileFromArchive(rootDir);
         }
+
+        String featuresPath = FilenameUtils.concat(rootDir.getAbsolutePath(), "csvsequence_%d.txt");
+        String labelsPath = FilenameUtils.concat(rootDir.getAbsolutePath(), "csvsequencelabelsShort_%d.txt");
+
         //Set up SequenceRecordReaderDataSetIterators for comparison
-        ClassPathResource resource = new ClassPathResource("csvsequence_0.txt");
-        String featuresPath = resource.getTempFileFromArchive().getAbsolutePath().replaceAll("0", "%d");
-        resource = new ClassPathResource("csvsequencelabelsShort_0.txt");
-        String labelsPath = resource.getTempFileFromArchive().getAbsolutePath().replaceAll("0", "%d");
 
         SequenceRecordReader featureReader = new CSVSequenceRecordReader(1, ",");
         SequenceRecordReader labelReader = new CSVSequenceRecordReader(1, ",");
@@ -445,16 +449,16 @@ public class RecordReaderMultiDataSetIteratorTest {
     @Test
     public void testVariableLengthTSMeta() throws Exception {
         //need to manually extract
+        File rootDir = temporaryFolder.newFolder();
         for (int i = 0; i < 3; i++) {
-            new ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive();
-            new ClassPathResource(String.format("csvsequencelabels_%d.txt", i)).getTempFileFromArchive();
-            new ClassPathResource(String.format("csvsequencelabelsShort_%d.txt", i)).getTempFileFromArchive();
+            new ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive(rootDir);
+            new ClassPathResource(String.format("csvsequencelabels_%d.txt", i)).getTempFileFromArchive(rootDir);
+            new ClassPathResource(String.format("csvsequencelabelsShort_%d.txt", i)).getTempFileFromArchive(rootDir);
         }
         //Set up SequenceRecordReaderDataSetIterators for comparison
-        ClassPathResource resource = new ClassPathResource("csvsequence_0.txt");
-        String featuresPath = resource.getTempFileFromArchive().getAbsolutePath().replaceAll("0", "%d");
-        resource = new ClassPathResource("csvsequencelabelsShort_0.txt");
-        String labelsPath = resource.getTempFileFromArchive().getAbsolutePath().replaceAll("0", "%d");
+
+        String featuresPath = FilenameUtils.concat(rootDir.getAbsolutePath(), "csvsequence_%d.txt");
+        String labelsPath = FilenameUtils.concat(rootDir.getAbsolutePath(), "csvsequencelabelsShort_%d.txt");
 
         //Set up
         SequenceRecordReader featureReader3 = new CSVSequenceRecordReader(1, ",");

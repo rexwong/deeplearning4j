@@ -19,6 +19,7 @@
 package org.deeplearning4j.nn.multilayer;
 
 import lombok.extern.slf4j.Slf4j;
+import org.deeplearning4j.BaseDL4JTest;
 import org.deeplearning4j.TestUtils;
 import org.deeplearning4j.datasets.iterator.impl.IrisDataSetIterator;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
@@ -27,10 +28,8 @@ import org.deeplearning4j.exception.DL4JException;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.*;
 import org.deeplearning4j.nn.conf.distribution.NormalDistribution;
-import org.deeplearning4j.nn.conf.graph.PreprocessorVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
-import org.deeplearning4j.nn.conf.layers.variational.VariationalAutoencoder;
 import org.deeplearning4j.nn.conf.preprocessor.CnnToFeedForwardPreProcessor;
 import org.deeplearning4j.nn.conf.preprocessor.FeedForwardToRnnPreProcessor;
 import org.deeplearning4j.nn.conf.preprocessor.RnnToCnnPreProcessor;
@@ -64,8 +63,6 @@ import org.nd4j.linalg.learning.config.NoOp;
 import org.nd4j.linalg.learning.config.Sgd;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.nd4j.linalg.primitives.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -78,7 +75,7 @@ import static org.junit.Assert.*;
  * Created by agibsonccc on 12/27/14.
  */
 @Slf4j
-public class MultiLayerTest {
+public class MultiLayerTest extends BaseDL4JTest {
 
     private static OpExecutioner.ProfilingMode origMode;
 
@@ -1131,47 +1128,63 @@ public class MultiLayerTest {
         //Simple test: same network, but in one case: one less layer (the OutputLayer), where the epsilons are passed in externally
         // instead. Should get identical results
 
-        Nd4j.getRandom().setSeed(12345);
-        INDArray inData = Nd4j.rand(3, 10);
-        INDArray outData = Nd4j.rand(3, 10);
+        for(WorkspaceMode ws : WorkspaceMode.values()) {
+            log.info("Workspace mode: " + ws);
 
-        Nd4j.getRandom().setSeed(12345);
-        MultiLayerConfiguration standard = new NeuralNetConfiguration.Builder().updater(new Sgd(0.1))
-                .seed(12345).list()
-                .layer(new DenseLayer.Builder().nIn(10).nOut(10).build())
-                .layer(new OutputLayer.Builder().lossFunction(LossFunctions.LossFunction.MSE).nIn(10)
-                        .nOut(10).build())
-                .build();
-        MultiLayerNetwork s = new MultiLayerNetwork(standard);
-        s.init();
+            Nd4j.getRandom().setSeed(12345);
+            INDArray inData = Nd4j.rand(3, 10);
+            INDArray outData = Nd4j.rand(3, 10);
+
+            Nd4j.getRandom().setSeed(12345);
+            MultiLayerConfiguration standard = new NeuralNetConfiguration.Builder().updater(new Sgd(0.1))
+                    .trainingWorkspaceMode(ws)
+                    .inferenceWorkspaceMode(ws)
+                    .seed(12345).list()
+                    .layer(new DenseLayer.Builder().nIn(10).nOut(10).build())
+                    .layer(new OutputLayer.Builder().lossFunction(LossFunctions.LossFunction.MSE).nIn(10)
+                            .nOut(10).build())
+                    .build();
+            MultiLayerNetwork s = new MultiLayerNetwork(standard);
+            s.init();
 
 
-        Nd4j.getRandom().setSeed(12345);
-        MultiLayerConfiguration external = new NeuralNetConfiguration.Builder().updater(new Sgd(0.1))
-                .seed(12345).list()
-                .layer(new DenseLayer.Builder().nIn(10).nOut(10).build())
-                .build();
+            Nd4j.getRandom().setSeed(12345);
+            MultiLayerConfiguration external = new NeuralNetConfiguration.Builder().updater(new Sgd(0.1))
+                    .trainingWorkspaceMode(ws)
+                    .inferenceWorkspaceMode(ws)
+                    .seed(12345).list()
+                    .layer(new DenseLayer.Builder().nIn(10).nOut(10).build())
+                    .build();
 
-        MultiLayerNetwork e = new MultiLayerNetwork(external);
-        e.init();
+            MultiLayerNetwork e = new MultiLayerNetwork(external);
+            e.init();
 
-        s.setInput(inData);
-        s.setLabels(outData);
-        s.computeGradientAndScore();
-        Gradient sGrad = s.gradient();
+            s.setInput(inData);
+            s.setLabels(outData);
+            s.computeGradientAndScore();
+            Gradient sGrad = s.gradient();
 
-        org.deeplearning4j.nn.layers.OutputLayer ol = (org.deeplearning4j.nn.layers.OutputLayer) s.getLayer(1);
-        Pair<Gradient, INDArray> olPairStd = ol.backpropGradient(null);
+            s.setInput(inData);
+            s.feedForward(true, false); //FF without clearing inputs as we need them later
 
-        INDArray olEpsilon = olPairStd.getSecond();
+            e.setInput(inData);
+            e.feedForward(true, false); //FF without clearing inputs as we need them later
 
-        e.setInput(inData);
-        e.feedForward(true, false);
-        Pair<Gradient,INDArray> extErrorGrad = e.backpropGradient(olEpsilon);
+            org.deeplearning4j.nn.layers.OutputLayer ol = (org.deeplearning4j.nn.layers.OutputLayer) s.getLayer(1);
+            Pair<Gradient, INDArray> olPairStd = ol.backpropGradient(null);
 
-        int nParamsDense = 10 * 10 + 10;
-        assertEquals(sGrad.gradient().get(NDArrayIndex.point(0), NDArrayIndex.interval(0, nParamsDense)),
-                extErrorGrad.getFirst().gradient());
+            INDArray olEpsilon = olPairStd.getSecond().detach();
+
+            e.setInput(inData);
+            e.feedForward(true, false);
+            Pair<Gradient, INDArray> extErrorGrad = e.backpropGradient(olEpsilon);
+
+            int nParamsDense = 10 * 10 + 10;
+            assertEquals(sGrad.gradient().get(NDArrayIndex.point(0), NDArrayIndex.interval(0, nParamsDense)),
+                    extErrorGrad.getFirst().gradient());
+
+            Nd4j.getWorkspaceManager().destroyAllWorkspacesForCurrentThread();
+        }
     }
 
     @Test
@@ -1219,8 +1232,58 @@ public class MultiLayerTest {
             Pair<Gradient,INDArray> gradient = graph.backpropGradient(error);
             graph.getUpdater().update(graph, gradient.getFirst(), 0, 0, minibatch);
 
+            Nd4j.getWorkspaceManager().destroyAllWorkspacesForCurrentThread();
         }
 
         Nd4j.getExecutioner().setProfilingMode(OpExecutioner.ProfilingMode.DISABLED);
+    }
+
+    @Test
+    public void testLayerSize(){
+        MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
+
+                .list()
+                .layer(new ConvolutionLayer.Builder().kernelSize(2,2).nOut(6).build())
+                .layer(new SubsamplingLayer.Builder().kernelSize(2,2).build())
+                .layer(new DenseLayer.Builder().nOut(30).build())
+                .layer(new OutputLayer.Builder().nOut(13).build())
+                .setInputType(InputType.convolutional(28,28,3))
+                .build();
+
+        MultiLayerNetwork net = new MultiLayerNetwork(conf);
+        net.init();
+
+        assertEquals(6, net.layerSize(0));
+        assertEquals(0, net.layerSize(1));
+        assertEquals(30, net.layerSize(2));
+        assertEquals(13, net.layerSize(3));
+    }
+
+
+    @Test
+    public void testZeroParamNet() throws Exception {
+
+        MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
+                .list()
+                .layer(new SubsamplingLayer.Builder().kernelSize(2,2).stride(2,2).build())
+                .layer(new LossLayer.Builder().activation(Activation.SIGMOID).lossFunction(LossFunctions.LossFunction.MSE).build())
+                .setInputType(InputType.convolutionalFlat(28,28,1))
+                .build();
+
+        MultiLayerNetwork net = new MultiLayerNetwork(conf);
+        net.init();
+
+        DataSet ds = new MnistDataSetIterator(16, true, 12345).next();
+
+        INDArray out = net.output(ds.getFeatures());
+
+        INDArray labelTemp = Nd4j.create(out.shape());
+        ds.setLabels(labelTemp);
+
+        net.fit(ds);
+
+        MultiLayerNetwork net2 = TestUtils.testModelSerialization(net);
+        INDArray out2 = net2.output(ds.getFeatures());
+        assertEquals(out, out2);
     }
 }
