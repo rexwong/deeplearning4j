@@ -1,12 +1,11 @@
 package org.deeplearning4j.zoo.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.NoArgsConstructor;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
-import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.Updater;
-import org.deeplearning4j.nn.conf.WorkspaceMode;
+import org.deeplearning4j.nn.conf.*;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
@@ -19,6 +18,8 @@ import org.deeplearning4j.zoo.PretrainedType;
 import org.deeplearning4j.zoo.ZooModel;
 import org.deeplearning4j.zoo.ZooType;
 import org.nd4j.linalg.activations.Activation;
+import org.nd4j.linalg.learning.config.IUpdater;
+import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
 /**
@@ -29,27 +30,19 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
  *
  * @author Justin Long (crockpotveggies)
  */
-@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class VGG19 extends ZooModel {
 
-    private int[] inputShape = new int[] {3, 224, 224};
-    private int numLabels;
-    private long seed;
-    private int iterations;
-    private WorkspaceMode workspaceMode;
-    private ConvolutionLayer.AlgoMode cudnnAlgoMode;
+    @Builder.Default private long seed = 1234;
+    @Builder.Default private int[] inputShape = new int[] {3, 224, 224};
+    @Builder.Default private int numClasses = 0;
+    @Builder.Default private IUpdater updater = new Nesterovs();
+    @Builder.Default private CacheMode cacheMode = CacheMode.NONE;
+    @Builder.Default private WorkspaceMode workspaceMode = WorkspaceMode.ENABLED;
+    @Builder.Default private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.NO_WORKSPACE;
 
-    public VGG19(int numLabels, long seed) {
-        this(numLabels, seed, WorkspaceMode.ENABLED);
-    }
-
-    public VGG19(int numLabels, long seed, WorkspaceMode workspaceMode) {
-        this.numLabels = numLabels;
-        this.seed = seed;
-        this.workspaceMode = workspaceMode;
-        this.cudnnAlgoMode = workspaceMode == WorkspaceMode.ENABLED ? ConvolutionLayer.AlgoMode.PREFER_FASTEST
-                        : ConvolutionLayer.AlgoMode.NO_WORKSPACE;
-    }
+    private VGG19() {}
 
     @Override
     public String pretrainedUrl(PretrainedType pretrainedType) {
@@ -68,92 +61,90 @@ public class VGG19 extends ZooModel {
     }
 
     @Override
-    public ZooType zooType() {
-        return ZooType.VGG16;
-    }
-
-    @Override
     public Class<? extends Model> modelType() {
         return ComputationGraph.class;
     }
 
-    public MultiLayerConfiguration conf() {
-        MultiLayerConfiguration conf =
-                        new NeuralNetConfiguration.Builder()
-                                        .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-                                        .updater(Updater.NESTEROVS).activation(Activation.RELU)
-                                        .trainingWorkspaceMode(workspaceMode).inferenceWorkspaceMode(workspaceMode)
-                                        .list()
-                                        // block 1
-                                        .layer(0, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nIn(inputShape[0]).nOut(64)
-                                                        .cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(1, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(64).cudnnAlgoMode(
-                                                                        cudnnAlgoMode)
-                                                        .build())
-                                        .layer(2, new SubsamplingLayer.Builder()
-                                                        .poolingType(SubsamplingLayer.PoolingType.MAX).kernelSize(2, 2)
-                                                        .stride(2, 2).build())
-                                        // block 2
-                                        .layer(3, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(128).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(4, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(128).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(5, new SubsamplingLayer.Builder()
-                                                        .poolingType(SubsamplingLayer.PoolingType.MAX).kernelSize(2, 2)
-                                                        .stride(2, 2).build())
-                                        // block 3
-                                        .layer(6, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(256).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(7, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(256).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(8, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(256).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(9, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(256).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(10, new SubsamplingLayer.Builder()
-                                                        .poolingType(SubsamplingLayer.PoolingType.MAX).kernelSize(2, 2)
-                                                        .stride(2, 2).build())
-                                        // block 4
-                                        .layer(11, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(12, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(13, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(14, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(15, new SubsamplingLayer.Builder()
-                                                        .poolingType(SubsamplingLayer.PoolingType.MAX).kernelSize(2, 2)
-                                                        .stride(2, 2).build())
-                                        // block 5
-                                        .layer(16, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(17, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(18, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(19, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
-                                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build())
-                                        .layer(20, new SubsamplingLayer.Builder()
-                                                        .poolingType(SubsamplingLayer.PoolingType.MAX).kernelSize(2, 2)
-                                                        .stride(2, 2).build())
-                                        .layer(21, new DenseLayer.Builder().nOut(4096).build())
-                                        .layer(22, new OutputLayer.Builder(
-                                                        LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD).name("output")
-                                                                        .nOut(numLabels).activation(Activation.SOFTMAX) // radial basis function required
-                                                                        .build())
-                                        .backprop(true).pretrain(false).setInputType(InputType
-                                                        .convolutionalFlat(inputShape[2], inputShape[1], inputShape[0]))
-                                        .build();
+    public ComputationGraphConfiguration conf() {
+        ComputationGraphConfiguration conf =
+                        new NeuralNetConfiguration.Builder().seed(seed)
+                                .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
+                                .updater(updater)
+                                .activation(Activation.RELU)
+                                .cacheMode(cacheMode)
+                                .trainingWorkspaceMode(workspaceMode)
+                                .inferenceWorkspaceMode(workspaceMode)
+                                .graphBuilder()
+                                .addInputs("in")
+                                // block 1
+                                .layer(0, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nIn(inputShape[0]).nOut(64)
+                                        .cudnnAlgoMode(cudnnAlgoMode).build(), "in")
+                                .layer(1, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(64).cudnnAlgoMode(cudnnAlgoMode).build(), "0")
+                                .layer(2, new SubsamplingLayer.Builder()
+                                        .poolingType(SubsamplingLayer.PoolingType.MAX).kernelSize(2, 2)
+                                        .stride(2, 2).build(), "1")
+                                // block 2
+                                .layer(3, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(128).cudnnAlgoMode(cudnnAlgoMode).build(), "2")
+                                .layer(4, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(128).cudnnAlgoMode(cudnnAlgoMode).build(), "3")
+                                .layer(5, new SubsamplingLayer.Builder()
+                                        .poolingType(SubsamplingLayer.PoolingType.MAX).kernelSize(2, 2)
+                                        .stride(2, 2).build(), "4")
+                                // block 3
+                                .layer(6, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(256).cudnnAlgoMode(cudnnAlgoMode).build(), "5")
+                                .layer(7, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(256).cudnnAlgoMode(cudnnAlgoMode).build(), "6")
+                                .layer(8, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(256).cudnnAlgoMode(cudnnAlgoMode).build(), "7")
+                                .layer(9, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(256).cudnnAlgoMode(cudnnAlgoMode).build(), "8")
+                                .layer(10, new SubsamplingLayer.Builder()
+                                        .poolingType(SubsamplingLayer.PoolingType.MAX).kernelSize(2, 2)
+                                        .stride(2, 2).build(), "9")
+                                // block 4
+                                .layer(11, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build(), "10")
+                                .layer(12, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build(), "11")
+                                .layer(13, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build(), "12")
+                                .layer(14, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build(), "13")
+                                .layer(15, new SubsamplingLayer.Builder()
+                                        .poolingType(SubsamplingLayer.PoolingType.MAX).kernelSize(2, 2)
+                                        .stride(2, 2).build(), "14")
+                                // block 5
+                                .layer(16, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build(), "15")
+                                .layer(17, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build(), "16")
+                                .layer(18, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build(), "17")
+                                .layer(19, new ConvolutionLayer.Builder().kernelSize(3, 3).stride(1, 1)
+                                        .padding(1, 1).nOut(512).cudnnAlgoMode(cudnnAlgoMode).build(), "18")
+                                .layer(20, new SubsamplingLayer.Builder()
+                                        .poolingType(SubsamplingLayer.PoolingType.MAX).kernelSize(2, 2)
+                                        .stride(2, 2).build(), "19")
+                                .layer(21, new DenseLayer.Builder().nOut(4096).build(), "20")
+                                .layer(22, new OutputLayer.Builder(
+                                        LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD).name("output")
+                                        .nOut(numClasses).activation(Activation.SOFTMAX) // radial basis function required
+                                        .build(), "21")
+                                .setOutputs("22")
+                                .backprop(true).pretrain(false)
+                                .setInputTypes(InputType.convolutionalFlat(inputShape[2], inputShape[1], inputShape[0]))
+                                .build();
 
         return conf;
     }
 
     @Override
-    public MultiLayerNetwork init() {
-        MultiLayerNetwork network = new MultiLayerNetwork(conf());
+    public ComputationGraph init() {
+        ComputationGraph network = new ComputationGraph(conf());
         network.init();
         return network;
     }

@@ -36,13 +36,19 @@ public class KerasLayerConfiguration {
     private final String LAYER_FIELD_LAYER = "layer";
 
     /* Basic layer names */
-    // Missing Layers: Permute, RepeatVector, Lambda, ActivityRegularization, Masking
-    // Conv3D, Cropping1D-3D, UpSampling3D,
-    // ZeroPadding3D, LocallyConnected1D-2D
+    // Missing Layers: RepeatVector, Lambda, ActivityRegularization, Masking
+    // Conv3DTranspose, SeparableConv1D, ConvRNN2D, ConvLSTM2D
+    // CuDNNGRU, CuDNNLSTM (TF only)
+    // GlobalAveragePooling3D, GlobalMaxPooling3D
+    // LocallyConnected1D-2D
     // Missing layers from keras 1: Highway, MaxoutDense
     private final String LAYER_CLASS_NAME_ACTIVATION = "Activation";
     private final String LAYER_CLASS_NAME_INPUT = "InputLayer";
+    private final String LAYER_CLASS_NAME_PERMUTE = "Permute";
     private final String LAYER_CLASS_NAME_DROPOUT = "Dropout";
+    private final String LAYER_CLASS_NAME_SPATIAL_DROPOUT_1D = "SpatialDropout1D";
+    private final String LAYER_CLASS_NAME_SPATIAL_DROPOUT_2D = "SpatialDropout2D";
+    private final String LAYER_CLASS_NAME_SPATIAL_DROPOUT_3D = "SpatialDropout3D";
     private final String LAYER_CLASS_NAME_ALPHA_DROPOUT = "AlphaDropout";
     private final String LAYER_CLASS_NAME_GAUSSIAN_DROPOUT = "GaussianDropout";
     private final String LAYER_CLASS_NAME_GAUSSIAN_NOISE = "GaussianNoise";
@@ -92,8 +98,10 @@ public class KerasLayerConfiguration {
     private final String LAYER_CLASS_NAME_EMBEDDING = "Embedding";
     private final String LAYER_CLASS_NAME_GLOBAL_MAX_POOLING_1D = "GlobalMaxPooling1D";
     private final String LAYER_CLASS_NAME_GLOBAL_MAX_POOLING_2D = "GlobalMaxPooling2D";
+    private final String LAYER_CLASS_NAME_GLOBAL_MAX_POOLING_3D = "GlobalMaxPooling3D";
     private final String LAYER_CLASS_NAME_GLOBAL_AVERAGE_POOLING_1D = "GlobalAveragePooling1D";
     private final String LAYER_CLASS_NAME_GLOBAL_AVERAGE_POOLING_2D = "GlobalAveragePooling2D";
+    private final String LAYER_CLASS_NAME_GLOBAL_AVERAGE_POOLING_3D = "GlobalAveragePooling3D";
     private final String LAYER_CLASS_NAME_TIME_DISTRIBUTED_DENSE = "TimeDistributedDense"; // Keras 1 only
     private final String LAYER_CLASS_NAME_ATROUS_CONVOLUTION_1D = "AtrousConvolution1D"; // Keras 1 only
     private final String LAYER_CLASS_NAME_ATROUS_CONVOLUTION_2D = "AtrousConvolution2D"; // Keras 1 only
@@ -103,8 +111,12 @@ public class KerasLayerConfiguration {
     private final String LAYER_CLASS_NAME_LEAKY_RELU = "LeakyReLU";
     private final String LAYER_CLASS_NAME_UPSAMPLING_1D = "UpSampling1D";
     private final String LAYER_CLASS_NAME_UPSAMPLING_2D = "UpSampling2D";
+    private final String LAYER_CLASS_NAME_UPSAMPLING_3D = "UpSampling3D";
+    private final String LAYER_CLASS_NAME_DEPTHWISE_CONVOLUTION_2D = "DepthwiseConv2D"; // Keras 2 only
+    private final String LAYER_CLASS_NAME_SEPARABLE_CONVOLUTION_1D = "SeparableConv1D"; // Keras 2 only
     private final String LAYER_CLASS_NAME_SEPARABLE_CONVOLUTION_2D = ""; // 1: SeparableConvolution2D, 2: SeparableConv2D
     private final String LAYER_CLASS_NAME_DECONVOLUTION_2D = ""; // 1: Deconvolution2D, 2: Conv2DTranspose
+    private final String LAYER_CLASS_NAME_DECONVOLUTION_3D = "Conv2DTranspose"; // Keras 2 only
 
     /* Partially shared layer configurations. */
     private final String LAYER_FIELD_INPUT_SHAPE = "input_shape";
@@ -154,6 +166,8 @@ public class KerasLayerConfiguration {
     /* Keras separable convolution types */
     private final String LAYER_PARAM_NAME_DEPTH_WISE_KERNEL = "depthwise_kernel";
     private final String LAYER_PARAM_NAME_POINT_WISE_KERNEL = "pointwise_kernel";
+    private final String LAYER_FIELD_DEPTH_MULTIPLIER = "depth_multiplier";
+
 
     private final String LAYER_FIELD_DEPTH_WISE_INIT = "depthwise_initializer";
     private final String LAYER_FIELD_POINT_WISE_INIT = "pointwise_initializer";
@@ -201,6 +215,7 @@ public class KerasLayerConfiguration {
     private final String LAYER_FIELD_POOL_1D_STRIDES = ""; // 1: stride, 2: strides
     private final String LAYER_FIELD_UPSAMPLING_1D_SIZE = ""; // 1: length, 2: size
     private final String LAYER_FIELD_UPSAMPLING_2D_SIZE = "size";
+    private final String LAYER_FIELD_UPSAMPLING_3D_SIZE = "size";
 
 
     /* Keras convolution border modes. */

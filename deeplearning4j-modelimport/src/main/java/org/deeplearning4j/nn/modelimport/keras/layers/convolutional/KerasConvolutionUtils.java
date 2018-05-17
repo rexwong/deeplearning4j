@@ -78,6 +78,11 @@ public class KerasConvolutionUtils {
         return strides;
     }
 
+    static int getDepthMultiplier(Map<String, Object> layerConfig, KerasLayerConfiguration conf)
+            throws InvalidKerasConfigurationException {
+        Map<String, Object> innerConfig = KerasLayerUtils.getInnerLayerConfigFromConfig(layerConfig, conf);
+        return  (int) innerConfig.get(conf.getLAYER_FIELD_DEPTH_MULTIPLIER());
+    }
 
     /**
      * Get atrous / dilation rate from config
@@ -134,7 +139,8 @@ public class KerasConvolutionUtils {
             throws InvalidKerasConfigurationException {
         Map<String, Object> innerConfig = KerasLayerUtils.getInnerLayerConfigFromConfig(layerConfig, conf);
         int[] size;
-        if (innerConfig.containsKey(conf.getLAYER_FIELD_UPSAMPLING_2D_SIZE()) && dimension == 2) {
+        if (innerConfig.containsKey(conf.getLAYER_FIELD_UPSAMPLING_2D_SIZE()) && dimension == 2
+                || innerConfig.containsKey(conf.getLAYER_FIELD_UPSAMPLING_3D_SIZE()) && dimension == 3) {
             @SuppressWarnings("unchecked")
             List<Integer> sizeList = (List<Integer>) innerConfig.get(conf.getLAYER_FIELD_UPSAMPLING_2D_SIZE());
             size = ArrayUtil.toArray(sizeList);
@@ -310,10 +316,10 @@ public class KerasConvolutionUtils {
             throw new InvalidKerasConfigurationException(
                     "Field " + layerField + " not found in Keras cropping or padding layer");
         int[] padding;
-        if (dimension == 2) {
+        if (dimension >= 2) {
             List<Integer> paddingList;
             // For 2D layers, padding/cropping can either be a pair [[x_0, x_1].[y_0, y_1]] or a pair [x, y]
-            // or a single integer x. yeah, really.
+            // or a single integer x. Likewise for the 3D case.
             try {
                 List paddingNoCast = (List) innerConfig.get(layerField);
                 boolean isNested;
@@ -321,34 +327,36 @@ public class KerasConvolutionUtils {
                     @SuppressWarnings("unchecked")
                     List<Integer> firstItem = (List<Integer>) paddingNoCast.get(0);
                     isNested = true;
-                    paddingList = new ArrayList<>(4);
+                    paddingList = new ArrayList<>(2 * dimension);
                 } catch (Exception e) {
                     int firstItem = (int) paddingNoCast.get(0);
                     isNested = false;
-                    paddingList = new ArrayList<>(2);
+                    paddingList = new ArrayList<>(dimension);
                 }
 
-                if ((paddingNoCast.size() == 2) && !isNested) {
-                    paddingList.add((int) paddingNoCast.get(0));
-                    paddingList.add((int) paddingNoCast.get(1));
+                if ((paddingNoCast.size() == dimension) && !isNested) {
+                    for (int i=0; i < dimension; i++)
+                        paddingList.add((int) paddingNoCast.get(i));
                     padding = ArrayUtil.toArray(paddingList);
-                } else if ((paddingNoCast.size() == 2) && isNested) {
-                    @SuppressWarnings("unchecked")
-                    List<Integer> first = (List<Integer>) paddingNoCast.get(0);
-                    paddingList.add((first.get(0)));
-                    paddingList.add((first.get(1)));
-                    @SuppressWarnings("unchecked")
-                    List<Integer> second = (List<Integer>) paddingNoCast.get(1);
-                    paddingList.add((second.get(0)));
-                    paddingList.add((second.get(1)));
+                } else if ((paddingNoCast.size() == dimension) && isNested) {
+                    for (int j=0; j < dimension; j++) {
+                        @SuppressWarnings("unchecked")
+                        List<Integer> item = (List<Integer>) paddingNoCast.get(0);
+                        paddingList.add((item.get(0)));
+                        paddingList.add((item.get(1)));
+                    }
                     padding = ArrayUtil.toArray(paddingList);
                 } else {
-                    throw new InvalidKerasConfigurationException("Found Keras ZeroPadding2D layer with invalid "
-                            + paddingList.size() + "D padding.");
+                    throw new InvalidKerasConfigurationException("Found Keras ZeroPadding" + dimension
+                            + "D layer with invalid " + paddingList.size() + "D padding.");
                 }
             } catch (Exception e) {
                 int paddingInt = (int) innerConfig.get(layerField);
-                padding = new int[]{paddingInt, paddingInt};
+                if (dimension == 2) {
+                    padding = new int[]{paddingInt, paddingInt, paddingInt, paddingInt};
+                } else {
+                    padding = new int[]{paddingInt, paddingInt, paddingInt, paddingInt, paddingInt, paddingInt};
+                }
             }
 
         } else if (dimension == 1) {

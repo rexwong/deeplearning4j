@@ -1,16 +1,15 @@
 package org.deeplearning4j.zoo.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
-import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.*;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
-import org.deeplearning4j.nn.conf.ConvolutionMode;
-import org.deeplearning4j.nn.conf.GradientNormalization;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.deeplearning4j.nn.conf.inputs.InputType;
-import org.deeplearning4j.nn.conf.layers.*;
+import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.deeplearning4j.nn.conf.layers.objdetect.Yolo2OutputLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
@@ -19,12 +18,12 @@ import org.deeplearning4j.zoo.PretrainedType;
 import org.deeplearning4j.zoo.ZooModel;
 import org.deeplearning4j.zoo.ZooType;
 import org.nd4j.linalg.activations.Activation;
-import org.nd4j.linalg.activations.impl.ActivationLReLU;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Adam;
+import org.nd4j.linalg.learning.config.IUpdater;
 
-import static org.deeplearning4j.zoo.model.helper.DarknetHelper.*;
+import static org.deeplearning4j.zoo.model.helper.DarknetHelper.addLayers;
 
 /**
  * Tiny YOLO
@@ -70,34 +69,27 @@ import static org.deeplearning4j.zoo.model.helper.DarknetHelper.*;
  *
  * @author saudet
  */
-@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class TinyYOLO extends ZooModel {
 
-    public static int nBoxes = 5;
-    public static double[][] priorBoxes = {{1.08, 1.19}, {3.42, 4.41}, {6.63, 11.38}, {9.42, 5.11}, {16.62, 10.52}};
+    @Builder.Default @Getter private int nBoxes = 5;
+    @Builder.Default @Getter private double[][] priorBoxes = {{1.08, 1.19}, {3.42, 4.41}, {6.63, 11.38}, {9.42, 5.11}, {16.62, 10.52}};
 
-    private int[] inputShape = {3, 416, 416};
-    private int numLabels;
-    private long seed;
-    private WorkspaceMode workspaceMode;
-    private ConvolutionLayer.AlgoMode cudnnAlgoMode;
+    @Builder.Default private long seed = 1234;
+    @Builder.Default private int[] inputShape = {3, 416, 416};
+    @Builder.Default private int numClasses = 0;
+    @Builder.Default private IUpdater updater = new Adam(1e-3);
+    @Builder.Default private CacheMode cacheMode = CacheMode.NONE;
+    @Builder.Default private WorkspaceMode workspaceMode = WorkspaceMode.ENABLED;
+    @Builder.Default private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.PREFER_FASTEST;
 
-    public TinyYOLO(int numLabels, long seed) {
-        this(numLabels, seed, WorkspaceMode.ENABLED);
-    }
-
-    public TinyYOLO(int numLabels, long seed, WorkspaceMode workspaceMode) {
-        this.numLabels = numLabels;
-        this.seed = seed;
-        this.workspaceMode = workspaceMode;
-        this.cudnnAlgoMode = workspaceMode == WorkspaceMode.ENABLED ? ConvolutionLayer.AlgoMode.PREFER_FASTEST
-                        : ConvolutionLayer.AlgoMode.NO_WORKSPACE;
-    }
+    private TinyYOLO() {}
 
     @Override
     public String pretrainedUrl(PretrainedType pretrainedType) {
         if (pretrainedType == PretrainedType.IMAGENET)
-            return "http://blob.deeplearning4j.org/models/tiny-yolo-voc_dl4j_inference.v1.zip";
+            return "http://blob.deeplearning4j.org/models/tiny-yolo-voc_dl4j_inference.v2.zip";
         else
             return null;
     }
@@ -105,14 +97,9 @@ public class TinyYOLO extends ZooModel {
     @Override
     public long pretrainedChecksum(PretrainedType pretrainedType) {
         if (pretrainedType == PretrainedType.IMAGENET)
-            return 2004171617L;
+            return 1256226465L;
         else
             return 0L;
-    }
-
-    @Override
-    public ZooType zooType() {
-        return ZooType.TINYYOLO;
     }
 
     @Override
@@ -128,9 +115,10 @@ public class TinyYOLO extends ZooModel {
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(1.0)
-                .updater(new Adam.Builder().learningRate(1e-3).build())
+                .updater(updater)
                 .l2(0.00001)
                 .activation(Activation.IDENTITY)
+                .cacheMode(cacheMode)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
                 .cudnnAlgoMode(cudnnAlgoMode)
@@ -158,7 +146,7 @@ public class TinyYOLO extends ZooModel {
                 .addLayer("convolution2d_" + layerNumber,
                         new ConvolutionLayer.Builder(1,1)
                                 .nIn(1024)
-                                .nOut(nBoxes * (5 + numLabels))
+                                .nOut(nBoxes * (5 + numClasses))
                                 .weightInit(WeightInit.XAVIER)
                                 .stride(1,1)
                                 .convolutionMode(ConvolutionMode.Same)

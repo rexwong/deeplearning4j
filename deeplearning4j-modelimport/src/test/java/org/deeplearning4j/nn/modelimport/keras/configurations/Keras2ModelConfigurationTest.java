@@ -26,7 +26,13 @@ import org.deeplearning4j.nn.modelimport.keras.KerasModel;
 import org.deeplearning4j.nn.modelimport.keras.layers.convolutional.KerasSpaceToDepth;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.junit.Test;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.io.ClassPathResource;
+
+import java.util.Arrays;
+
+import static junit.framework.TestCase.assertTrue;
 
 
 /**
@@ -160,20 +166,56 @@ public class Keras2ModelConfigurationTest {
     }
 
     @Test
+    public void flattenConv1DTfTest() throws Exception {
+        runSequentialConfigTest("configs/keras2/flatten_conv1d_tf_keras_2.json");
+    }
+
+    @Test
     public void embeddingLSTMMaskZeroTest() throws Exception {
         runModelConfigTest("configs/keras2/embedding_lstm_calculator.json");
     }
+
+    @Test
+    public void permuteRetinaUnet() throws Exception {
+        runModelConfigTest("configs/keras2/permute_retina_unet.json");
+    }
+
 
     @Test
     public void simpleAddLayerTest() throws Exception {
         runModelConfigTest("configs/keras2/simple_add_tf_keras_2.json");
     }
 
+    @Test
+    public void embeddingConcatTest() throws Exception {
+        runModelConfigTest("/configs/keras2/model_concat_embedding_sequences_tf_keras_2.json");
+    }
+
+    @Test
+    public void conv1dDilationTest() throws Exception {
+        runModelConfigTest("/configs/keras2/conv1d_dilation_tf_keras_2_config.json");
+    }
+
+    @Test
+    public void oneLstmLayerTest() throws Exception {
+        ClassPathResource configResource = new ClassPathResource(
+                "/configs/keras2/one_lstm_no_sequences_tf_keras_2.json", classLoader);
+        MultiLayerConfiguration config =
+                new KerasModel().modelBuilder().modelJsonInputStream(configResource.getInputStream())
+                        .enforceTrainingConfig(false).buildSequential().getMultiLayerConfiguration();
+        MultiLayerNetwork model = new MultiLayerNetwork(config);
+        model.init();
+        INDArray input = Nd4j.create(50, 500, 1500);
+        INDArray out = model.output(input);
+        assertTrue(Arrays.equals(out.shape(), new int[]{50, 64}));
+    }
+
+
     private void runSequentialConfigTest(String path) throws Exception {
         ClassPathResource configResource = new ClassPathResource(path, classLoader);
         MultiLayerConfiguration config =
                 new KerasModel().modelBuilder().modelJsonInputStream(configResource.getInputStream())
-                        .enforceTrainingConfig(true).buildSequential().getMultiLayerConfiguration();
+                        .enforceTrainingConfig(false).buildSequential().getMultiLayerConfiguration();
         MultiLayerNetwork model = new MultiLayerNetwork(config);
         model.init();
     }
@@ -182,9 +224,8 @@ public class Keras2ModelConfigurationTest {
         ClassPathResource configResource = new ClassPathResource(path, classLoader);
         ComputationGraphConfiguration config =
                 new KerasModel().modelBuilder().modelJsonInputStream(configResource.getInputStream())
-                        .enforceTrainingConfig(true).buildModel().getComputationGraphConfiguration();
+                        .enforceTrainingConfig(false).buildModel().getComputationGraphConfiguration();
         ComputationGraph model = new ComputationGraph(config);
         model.init();
-//        System.out.println(model.summary());
     }
 }

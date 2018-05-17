@@ -1,5 +1,6 @@
 package org.deeplearning4j.nn.multilayer;
 
+import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.BaseDL4JTest;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.conf.BackpropType;
@@ -8,6 +9,7 @@ import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.NormalDistribution;
 import org.deeplearning4j.nn.conf.layers.GravesLSTM;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
+import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.conf.preprocessor.RnnToFeedForwardPreProcessor;
 import org.deeplearning4j.nn.conf.stepfunctions.NegativeDefaultStepFunction;
 import org.deeplearning4j.nn.weights.WeightInit;
@@ -33,28 +35,18 @@ import java.util.Random;
 /**
  * Created by Kirill Lebedev (drlebedev.com) on 8/31/2015.
  */
+@Slf4j
 public class GravesLSTMOutputTest extends BaseDL4JTest {
 
     private static int nIn = 20;
     private static int layerSize = 15;
     private static int window = 300;
     private static INDArray data;
-    private static Logger log;
     private static Type type;
 
     @BeforeClass
     public static void setUp() {
-        type = Nd4j.dataType();
-        DataTypeUtil.setDTypeForContext(Type.FLOAT);
-        log = LoggerFactory.getLogger(GravesLSTMOutputTest.class);
         data = getData();
-    }
-
-    @AfterClass
-    public static void tearDown() {
-        data = null;
-        log = null;
-        DataTypeUtil.setDTypeForContext(type);
     }
 
     @Test
@@ -100,11 +92,10 @@ public class GravesLSTMOutputTest extends BaseDL4JTest {
                                         .layer(0, new GravesLSTM.Builder().weightInit(WeightInit.DISTRIBUTION)
                                                         .dist(new NormalDistribution(0.0, 0.01)).nIn(nIn)
                                                         .nOut(layerSize).activation(Activation.TANH).build())
-                                        .layer(1, new OutputLayer.Builder(
+                                        .layer(1, new RnnOutputLayer.Builder(
                                                         LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD).nIn(layerSize)
                                                                         .nOut(nIn).activation(Activation.SOFTMAX)
                                                                         .build())
-                                        .inputPreProcessor(1, new RnnToFeedForwardPreProcessor()).backprop(true)
                                         .pretrain(false);
         if (useTBPTT) {
             builder.backpropType(BackpropType.TruncatedBPTT);

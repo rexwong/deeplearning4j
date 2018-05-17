@@ -350,8 +350,31 @@ public class MultiLayerConfiguration implements Serializable, Cloneable {
         return new NetworkMemoryReport(memoryReportMap, MultiLayerConfiguration.class, "MultiLayerNetwork", inputType);
     }
 
+    /**
+     * For the given input shape/type for the network, return a list of activation sizes for each layer in the network.<br>
+     * i.e., list.get(i) is the output activation sizes for layer i
+     * @param inputType Input type for the network
+     * @return A lits of activation types for the network, indexed by layer number
+     */
+    public List<InputType> getLayerActivationTypes(@NonNull InputType inputType){
+        List<InputType> out = new ArrayList<>();
+        int nLayers = confs.size();
+        for (int i = 0; i < nLayers; i++) {
+            InputPreProcessor preproc = getInputPreProcess(i);
+            if (preproc != null) {
+                inputType = preproc.getOutputType(inputType);
+            }
+
+            inputType = confs.get(i).getLayer().getOutputType(i, inputType);
+            out.add(inputType);
+        }
+        return out;
+    }
+
     @Data
     public static class Builder {
+
+        private static final int DEFAULT_TBPTT_LENGTH = 20;
 
         protected List<NeuralNetConfiguration> confs = new ArrayList<>();
         protected double dampingFactor = 100;
@@ -359,8 +382,8 @@ public class MultiLayerConfiguration implements Serializable, Cloneable {
         protected boolean pretrain = false;
         protected boolean backprop = true;
         protected BackpropType backpropType = BackpropType.Standard;
-        protected int tbpttFwdLength = 20;
-        protected int tbpttBackLength = 20;
+        protected int tbpttFwdLength = DEFAULT_TBPTT_LENGTH;
+        protected int tbpttBackLength = DEFAULT_TBPTT_LENGTH;
         protected InputType inputType;
 
         protected WorkspaceMode trainingWorkspaceMode = WorkspaceMode.ENABLED;
@@ -430,7 +453,7 @@ public class MultiLayerConfiguration implements Serializable, Cloneable {
          * but optionally truncated BPTT can be used for training recurrent neural networks.
          * If using TruncatedBPTT make sure you set both tBPTTForwardLength() and tBPTTBackwardLength()
          */
-        public Builder backpropType(BackpropType type) {
+        public Builder backpropType(@NonNull BackpropType type) {
             this.backpropType = type;
             return this;
         }
@@ -492,6 +515,14 @@ public class MultiLayerConfiguration implements Serializable, Cloneable {
         }
 
         public MultiLayerConfiguration build() {
+            //Validate BackpropType setting
+            if((tbpttBackLength != DEFAULT_TBPTT_LENGTH || tbpttFwdLength != DEFAULT_TBPTT_LENGTH) && backpropType != BackpropType.TruncatedBPTT){
+                log.warn("Truncated backpropagation through time lengths have been configured with values " + tbpttFwdLength
+                        + " and " + tbpttBackLength + " but backprop type is set to " + backpropType + ". TBPTT configuration" +
+                        " settings will only take effect if backprop type is set to BackpropType.TruncatedBPTT");
+            }
+
+
             if (inputType == null && inputPreProcessors.get(0) == null) {
                 //User hasn't set the InputType. Sometimes we can infer it...
                 // For example, Dense/RNN layers, where preprocessor isn't set -> user is *probably* going to feed in

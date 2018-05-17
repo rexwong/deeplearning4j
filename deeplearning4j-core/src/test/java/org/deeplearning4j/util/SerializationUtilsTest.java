@@ -21,7 +21,9 @@ package org.deeplearning4j.util;
 import org.apache.commons.io.FileUtils;
 import org.deeplearning4j.BaseDL4JTest;
 import org.deeplearning4j.datasets.iterator.impl.IrisDataSetIterator;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 
@@ -34,25 +36,24 @@ import static org.junit.Assert.assertEquals;
  * Created by mjk on 9/15/14.
  */
 public class SerializationUtilsTest extends BaseDL4JTest {
+
+    @Rule
+    public TemporaryFolder testDir = new TemporaryFolder();
+
     @Test
-    public void testWriteRead() {
+    public void testWriteRead() throws Exception {
         DataSetIterator iter = new IrisDataSetIterator(150, 150);
         String irisData = "irisData.dat";
 
         DataSet freshDataSet = iter.next(150);
 
-        org.nd4j.linalg.util.SerializationUtils.saveObject(freshDataSet, new File(irisData));
+        File f = testDir.newFile(irisData);
+        org.nd4j.linalg.util.SerializationUtils.saveObject(freshDataSet, f);
 
-        DataSet readDataSet = org.nd4j.linalg.util.SerializationUtils.readObject(new File(irisData));
+        DataSet readDataSet = org.nd4j.linalg.util.SerializationUtils.readObject(f);
 
         assertEquals(freshDataSet.getFeatureMatrix(), readDataSet.getFeatureMatrix());
         assertEquals(freshDataSet.getLabels(), readDataSet.getLabels());
-        try {
-            FileUtils.forceDelete(new File(irisData));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
     }
 
 }

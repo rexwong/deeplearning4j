@@ -54,7 +54,9 @@ import org.deeplearning4j.spark.impl.graph.SparkComputationGraph;
 import org.deeplearning4j.spark.impl.multilayer.SparkDl4jMultiLayer;
 import org.deeplearning4j.spark.stats.EventStats;
 import org.deeplearning4j.spark.stats.ExampleCountEventStats;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -81,6 +83,15 @@ import static org.junit.Assert.*;
  */
 public class TestSparkMultiLayerParameterAveraging extends BaseSparkTest {
 
+    public static class TestFn implements Function<LabeledPoint, LabeledPoint>{
+        @Override
+        public LabeledPoint call(LabeledPoint v1) throws Exception {
+            return new LabeledPoint(v1.label(), Vectors.dense(v1.features().toArray()));
+        }
+    }
+
+    @Rule
+    public TemporaryFolder testDir = new TemporaryFolder();
 
     @Test
     public void testFromSvmLightBackprop() throws Exception {
@@ -88,12 +99,7 @@ public class TestSparkMultiLayerParameterAveraging extends BaseSparkTest {
                         .loadLibSVMFile(sc.sc(),
                                         new ClassPathResource("svmLight/iris_svmLight_0.txt").getTempFileFromArchive()
                                                         .getAbsolutePath())
-                        .toJavaRDD().map(new Function<LabeledPoint, LabeledPoint>() {
-                            @Override
-                            public LabeledPoint call(LabeledPoint v1) throws Exception {
-                                return new LabeledPoint(v1.label(), Vectors.dense(v1.features().toArray()));
-                            }
-                        });
+                        .toJavaRDD().map(new TestFn());
         Nd4j.ENFORCE_NUMERICAL_STABILITY = true;
 
         DataSet d = new IrisDataSetIterator(150, 150).next();
@@ -131,12 +137,7 @@ public class TestSparkMultiLayerParameterAveraging extends BaseSparkTest {
                         .loadLibSVMFile(sc.sc(),
                                         new ClassPathResource("svmLight/iris_svmLight_0.txt").getTempFileFromArchive()
                                                         .getAbsolutePath())
-                        .toJavaRDD().map(new Function<LabeledPoint, LabeledPoint>() {
-                            @Override
-                            public LabeledPoint call(LabeledPoint v1) throws Exception {
-                                return new LabeledPoint(v1.label(), Vectors.dense(v1.features().toArray()));
-                            }
-                        });
+                        .toJavaRDD().map(new TestFn());
 
         DataSet d = new IrisDataSetIterator(150, 150).next();
         MultiLayerConfiguration conf =
@@ -398,7 +399,7 @@ public class TestSparkMultiLayerParameterAveraging extends BaseSparkTest {
     @Test
     public void testFitViaStringPaths() throws Exception {
 
-        Path tempDir = Files.createTempDirectory("DL4J-testFitViaStringPaths");
+        Path tempDir = testDir.newFolder("DL4J-testFitViaStringPaths").toPath();
         File tempDirF = tempDir.toFile();
         tempDirF.deleteOnExit();
 
@@ -461,7 +462,7 @@ public class TestSparkMultiLayerParameterAveraging extends BaseSparkTest {
     @Test
     public void testFitViaStringPathsSize1() throws Exception {
 
-        Path tempDir = Files.createTempDirectory("DL4J-testFitViaStringPathsSize1");
+        Path tempDir = testDir.newFolder("DL4J-testFitViaStringPathsSize1").toPath();
         File tempDirF = tempDir.toFile();
         tempDirF.deleteOnExit();
 
@@ -541,8 +542,8 @@ public class TestSparkMultiLayerParameterAveraging extends BaseSparkTest {
     @Test
     public void testFitViaStringPathsCompGraph() throws Exception {
 
-        Path tempDir = Files.createTempDirectory("DL4J-testFitViaStringPathsCG");
-        Path tempDir2 = Files.createTempDirectory("DL4J-testFitViaStringPathsCG-MDS");
+        Path tempDir = testDir.newFolder("DL4J-testFitViaStringPathsCG").toPath();
+        Path tempDir2 = testDir.newFolder("DL4J-testFitViaStringPathsCG-MDS").toPath();
         File tempDirF = tempDir.toFile();
         File tempDirF2 = tempDir2.toFile();
         tempDirF.deleteOnExit();

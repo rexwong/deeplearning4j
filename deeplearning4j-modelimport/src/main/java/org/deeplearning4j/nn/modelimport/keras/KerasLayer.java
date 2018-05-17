@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.conf.InputPreProcessor;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.modelimport.keras.config.KerasLayerConfiguration;
 import org.deeplearning4j.nn.modelimport.keras.config.KerasLayerConfigurationFactory;
@@ -210,7 +211,7 @@ public class KerasLayer {
      *
      * @return list of inbound layer names
      */
-    List<String> getInboundLayerNames() {
+    public List<String> getInboundLayerNames() {
         if (this.inboundLayerNames == null)
             this.inboundLayerNames = new ArrayList<>();
         return this.inboundLayerNames;
@@ -221,7 +222,7 @@ public class KerasLayer {
      *
      * @param inboundLayerNames list of inbound layer naems
      */
-    void setInboundLayerNames(List<String> inboundLayerNames) {
+    public void setInboundLayerNames(List<String> inboundLayerNames) {
         this.inboundLayerNames = new ArrayList<>(inboundLayerNames);
     }
 

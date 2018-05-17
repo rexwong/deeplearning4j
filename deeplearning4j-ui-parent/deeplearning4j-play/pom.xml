@@ -80,7 +80,7 @@
             <id>test-nd4j-native</id>
         </profile>
         <profile>
-            <id>test-nd4j-cuda-8.0</id>
+            <id>test-nd4j-cuda-9.0</id>
         </profile>
 
     </profiles>
@@ -102,12 +102,6 @@
                 <artifactId>jsr305</artifactId>
               </exclusion>
             </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>org.eclipse.collections</groupId>
-            <artifactId>eclipse-collections</artifactId>
-            <version>${eclipse.collections.version}</version>
         </dependency>
 
         <dependency>
